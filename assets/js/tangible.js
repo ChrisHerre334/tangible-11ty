@@ -72,7 +72,18 @@ export default class Tangible {
             Popcorn: [["A","B","C","D"],['challenge1']],
             RowYourBoat: [["A","B","C","D","E","F","G","H"],['challenge1']],
             Story: [["A","B","C","D","E","F","G","H"],['challenge1']]
-        }
+        };
+
+        // Audio recorder functionality
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.recordingSlot = null;
+        this.maxRecordingTime = 5;  //seconds
+        this.recordingInterval = null;
+        this.recordingStartTime = null;
+
+        // Custom sound set in session
+        this.sessionSoundSet = null;
     }
 
     /** Loads assets and data for this set of tiles
@@ -81,17 +92,29 @@ export default class Tangible {
      */
     preloads(soundSet) {
 		var soundsTemp = {};
-		this.soundSets[soundSet][0].forEach(function(element) {
-    	soundsTemp[element] = new Audio("/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3");
-		});
+
+        if (soundSet.startsWith("Custom_")) {
+            // For custom sets, use dataUrls directly
+            this.soundSets[soundSet][0].forEach((sound) => {
+                const audio = new Audio();
+                audio.src = sound.dataUrl;
+                soundsTemp[sound.letter] = audio;
+            });
+        } else {
+            // For built-in sets, use original approach
+            this.soundSets[soundSet][0].forEach(function(element) {
+                soundsTemp[element] = new Audio("/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3");
+            });
+        }
+		
 		document.getElementById("challenges").innerHTML = '';
 		let challenge = 1;
 		if (this.soundSets[soundSet][1] != ''){
-		this.soundSets[soundSet][1].forEach(function(element) {
-		document.getElementById("challenges").innerHTML += "<h3>Challenge "+challenge+"</h3><audio controls><source src='/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3' type='audio/mpeg'></audio>";
-		challenge += 1;
-		});
-		};
+		    this.soundSets[soundSet][1].forEach(function(element) {
+		        document.getElementById("challenges").innerHTML += "<h3>Challenge "+challenge+"</h3><audio controls><source src='/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3' type='audio/mpeg'></audio>";
+		        challenge += 1;
+		    });
+		}
 		
 		this.sounds = soundsTemp;
     }
@@ -163,7 +186,7 @@ export default class Tangible {
 
     /**
      * Sort the top codes y ascending
-     * X DESCENDING because the video is mirrorer
+     * X DESCENDING because the video is mirrored
      * @param a
      * @param b
      * @return {number}
