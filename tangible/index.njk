@@ -45,24 +45,24 @@
       <h2>Make Your Sound Set</h2>
       <div class="recording-scroll-containter">
         <div class="recording-scroll">
-          <!-- A -->
-          <div class="recording-slot" data-letter="A">
-            <div class="slot-label">A</div>
-            <button class="record-button" data-letter="A">
-              <svg xmlns="http://www.w3.org/200/svg" viewBox="0 0 24 24" width="24" height="24">
-                <circle cx="12" cy="12" r="6" fill="#ff0000" />
-              </svg>
-            </button>
-            <div class="progress-container">
-              <div class="progress-bar" data-letter="A"></div>
+          {% for letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] %}
+            <div class="recording-slot" data-letter="{{letter}}">
+              <div class="slot-label">{{letter}}</div>
+              <button class="record-button" data-letter="{{letter}}">
+                <svg xmlns="http://www.w3.org/200/svg" viewBox="0 0 24 24" width="24" height="24">
+                  <circle cx="12" cy="12" r="6" fill="#ff0000" />
+                </svg>
+              </button>
+              <div class="progress-container">
+                <div class="progress-bar" data-letter="{{letter}}"></div>
+              </div>
+              <button class="discard-button" data-letter="{{letter}}" disabled>
+                <svg xmlns="https://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#19736d"/></path>
+                </svg>
+              </button>
             </div>
-            <button class="discard-button" data-letter="A" disabled>
-              <svg xmlns="https://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#19736d"/></path>
-              </svg>
-            </button>
-          </div>
-          <!-- B -->
+          {% endfor %}
         </div>
       </div>
       <div class="bottom-actions">

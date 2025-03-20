@@ -105,7 +105,7 @@ button {
 
 select {
 	width: 80%;
-	margin: 5px; 0 5px 0;
+	margin: 5px 0 5px 0;
 }
 
 button:hover {
@@ -123,4 +123,117 @@ button:hover {
 	width: 100%;
 }
 
+/* Custom Sound Set Styles */
+.recording-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  border-top: 1px solid #19736d;
+  border-bottom: 1px solid #19736d;
+}
 
+.recording-scroll {
+  display: flex;
+  padding: 10px 0;
+  min-width: min-content;
+}
+
+.recording-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 10px;
+  min-width: 80px;
+}
+
+.slot-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #19736d;
+}
+
+.record-button, .discard-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #19736d;
+  background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 5px 0;
+}
+
+.record-button.recording {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.progress-container {
+  width: 100%;
+  height: 10px;
+  background-color: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background-color: #19736d;
+  transition: width 0.1s linear;
+}
+
+.discard-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.discard-button:not(:disabled):hover {
+  background-color: #ffdddd;
+}
+
+.bottom-actions {
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Responsive styles for recording */
+@media (max-width: 480px) {
+  .recording-scroll-container {
+      height: 200px;
+      overflow-y: auto;
+  }
+  
+  .recording-scroll {
+      flex-direction: column;
+      height: min-content;
+  }
+  
+  .recording-slot {
+      flex-direction: row;
+      width: 100%;
+      margin: 5px 0;
+      justify-content: space-between;
+  }
+  
+  .slot-label {
+      width: 20px;
+      margin-right: 10px;
+      margin-bottom: 0;
+  }
+  
+  .progress-container {
+      flex-grow: 1;
+      margin: 0 10px;
+  }
+}
