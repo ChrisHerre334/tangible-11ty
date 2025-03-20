@@ -72,7 +72,10 @@ export default class Tangible {
             Popcorn: [["A","B","C","D"],['challenge1']],
             RowYourBoat: [["A","B","C","D","E","F","G","H"],['challenge1']],
             Story: [["A","B","C","D","E","F","G","H"],['challenge1']]
-        }
+        };
+
+        // Custom sound set in session
+        this.sessionSoundSet = null;
     }
 
     /** Loads assets and data for this set of tiles
