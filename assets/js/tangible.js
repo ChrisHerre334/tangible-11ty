@@ -72,18 +72,7 @@ export default class Tangible {
             Popcorn: [["A","B","C","D"],['challenge1']],
             RowYourBoat: [["A","B","C","D","E","F","G","H"],['challenge1']],
             Story: [["A","B","C","D","E","F","G","H"],['challenge1']]
-        };
-
-        // Audio recorder functionality
-        this.mediaRecorder = null;
-        this.audioChunks = [];
-        this.recordingSlot = null;
-        this.maxRecordingTime = 5;  //seconds
-        this.recordingInterval = null;
-        this.recordingStartTime = null;
-
-        // Custom sound set in session
-        this.sessionSoundSet = null;
+        }
     }
 
     /** Loads assets and data for this set of tiles
@@ -357,9 +346,9 @@ export default class Tangible {
 
         // Run preloads
         this.preloads("GimmeGimmeGimme");
-        
-        
-        
+
+        // Make tangible available globally for the sound recorder
+        window.tangible = this;
     }
 
 }
