@@ -80,7 +80,7 @@ class SoundRecorder {
 
         // Reset progress bar
         const progressBar = document.querySelector(`.progress-bar[data-letter="${letter}"]`);
-        progressBar.computedStyleMap.width = '0%';
+        progressBar.style.width = '0%';
 
         this.startRecording();
 
@@ -90,11 +90,11 @@ class SoundRecorder {
             const elapsed = (Date.now() - this.recordingStartTime) / 1000;
             const progress = Math.min(elapsed / this.maxRecordingTime * 100, 100);
 
-            progressBar.computedStyleMap.width = `${progress}%`;
+            progressBar.style.width = `${progress}%`;
 
             // Stop recording if max time reached
             if (elapsed >= this.maxRecordingTime) {
-                this.startRecording();
+                this.stopRecording();
             }
         }, 100);
     }
@@ -228,13 +228,13 @@ class SoundRecorder {
 }
 
 // Initialise the sound recorder with the tangible instance
-let SoundRecorder;
+let soundRecorderInstance;
 
 // Wait for tangible top be initialised before creating the sound recorder
 const waitForTangible = setInterval(() => {
     // Check if window.tangible has been created by main.js
     if (window.tangible instanceof Tangible) {
-        SoundRecorder = new SoundRecorder(window.tangible);
+        soundRecorderInstance = new SoundRecorder(window.tangible);
         clearInterval(waitForTangible);
     }
 }, 100);
