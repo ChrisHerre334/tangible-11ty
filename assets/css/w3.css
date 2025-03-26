@@ -126,7 +126,8 @@ button:hover {
 /* Custom Sound Set Styles */
 .recording-scroll-container {
   width: 100%;
-  overflow-x: auto;
+  height: 300px;
+  overflow-y: auto;
   margin-bottom: 10px;
   border-top: 1px solid #19736d;
   border-bottom: 1px solid #19736d;
@@ -134,27 +135,32 @@ button:hover {
 
 .recording-scroll {
   display: flex;
+  flex-direction: column;
   padding: 10px 0;
-  min-width: min-content;
 }
 
 .recording-slot {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  margin: 0 10px;
-  min-width: 80px;
+  justify-content: space-between;
+  width: 100%;
+  margin: 5px 0;
+  padding: 5px 10px;
 }
 
 .slot-label {
   font-weight: bold;
-  margin-bottom: 5px;
+  margin-right: 10px;
   color: #19736d;
+  min-width: 20px;
+  text-align: center;
 }
 
 .record-button, .discard-button {
   width: 40px;
   height: 40px;
+  min-width: 40px;
   border-radius: 50%;
   border: 2px solid #19736d;
   background-color: white;
@@ -163,7 +169,7 @@ button:hover {
   align-items: center;
   cursor: pointer;
   padding: 0;
-  margin: 5px 0;
+  margin: 0 5px;
 }
 
 .record-button.recording {
@@ -177,12 +183,12 @@ button:hover {
 }
 
 .progress-container {
-  width: 100%;
+  flex-grow: 1;
   height: 10px;
   background-color: #e0e0e0;
   border-radius: 5px;
   overflow: hidden;
-  margin: 5px 0;
+  margin: 0 10px;
 }
 
 .progress-bar {
@@ -210,7 +216,7 @@ button:hover {
 /* Responsive styles for recording */
 @media (max-width: 480px) {
   .recording-scroll-container {
-      height: 200px;
+      height: 250px;
       overflow-y: auto;
   }
   
