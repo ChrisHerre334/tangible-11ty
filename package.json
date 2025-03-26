@@ -3,7 +3,7 @@
   "version": "0.2",
   "description": "For Tangible top codes",
   "scripts": {
-    "build": "eleventy",
+    "build": "eleventy --pathprefix 'tangible-11ty'",
     "rebuild": "npm ci && npm run build",
     "watch": "eleventy --watch",
     "serve": "eleventy --serve",

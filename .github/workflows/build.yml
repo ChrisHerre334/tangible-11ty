@@ -27,6 +27,7 @@
  
        - name: Install dependencies & build
          run: |
+           npm ci
            npm run rebuild
  
        - name: Deploy to github pages
