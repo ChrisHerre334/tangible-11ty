@@ -332,7 +332,12 @@ class SoundRecorder {
             console.log("MediaRecorder already inactive or not created");
         }
 
+        // Enable the discard button for this recording
+        const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
+        discardButton.disabled = false;
+        
         this.resetRecordingState();
+        
     }
 
     // Reset the recording state
