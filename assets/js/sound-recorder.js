@@ -13,17 +13,108 @@ class SoundRecorder {
         this.recordingInterval = null;
         this.recordingStartTime = null;
         this.stream = null;
+        this.hasRequestedPermission = false;
 
-        // Initialise when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.initEventListeners();
+                this.createPermissionBanner();
+            });
+        } else {
+            // DOM already loaded, initialize immediately
             this.initEventListeners();
-            // Request audio permission when the page loads
-            this.requestMicrophoneAccess();
+            this.createPermissionBanner();
+        }
+    }
+
+    // Create a banner to request microphone permission with user interaction
+    createPermissionBanner() {
+        // First check if we already have permission
+        this.checkMicrophonePermission((hasPermission) => {
+            // If we already have permission, no need to show the banner
+            if (hasPermission) {
+                console.log("Microphone permission already granted, not showing banner");
+                return;
+            }
+            
+            // Create banner element
+            const banner = document.createElement('div');
+            banner.id = 'mic-permission-banner';
+            banner.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background-color: #f8d7da;
+                color: #721c24;
+                padding: 10px;
+                text-align: center;
+                z-index: 9999;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+
+            // Create message and button
+            const message = document.createElement('div');
+            message.textContent = 'Microphone access is required to record sounds. Please allow access.';
+            
+            const button = document.createElement('button');
+            button.textContent = 'Grant Access';
+            button.style.cssText = `
+                background-color: #28a745;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+            `;
+            
+            const dismissButton = document.createElement('button');
+            dismissButton.textContent = '×';
+            dismissButton.style.cssText = `
+                background: none;
+                border: none;
+                color: #721c24;
+                font-size: 20px;
+                cursor: pointer;
+                margin-left: 10px;
+            `;
+
+            // Add event listeners
+            button.addEventListener('click', () => {
+                this.requestMicrophoneAccess((granted) => {
+                    if (granted) {
+                        banner.style.backgroundColor = '#d4edda';
+                        banner.style.color = '#155724';
+                        message.textContent = 'Microphone access granted. You can now record sounds.';
+                        button.style.display = 'none';
+                        
+                        // Remove banner after 3 seconds
+                        setTimeout(() => {
+                            banner.remove();
+                        }, 3000);
+                    }
+                });
+            });
+            
+            dismissButton.addEventListener('click', () => {
+                banner.remove();
+            });
+
+            // Add elements to banner
+            banner.appendChild(message);
+            banner.appendChild(button);
+            banner.appendChild(dismissButton);
+
+            // Add banner to document
+            document.body.appendChild(banner);
         });
     }
 
     // Check if microphone is already allowed
-    checkMicrophonePermission() {
+    checkMicrophonePermission(callback) {
         console.log("Checking microphone permission status...");
 
         // Check if the API is available
@@ -31,37 +122,66 @@ class SoundRecorder {
             navigator.permissions.query({ name: 'microphone' })
                 .then(permissionStatus => {
                     console.log("Microphone permission status:", permissionStatus.state);
+                    
+                    if (callback && typeof callback === 'function') {
+                        callback(permissionStatus.state === 'granted');
+                    }
+                    
                     // Listen for changes to permission status
                     permissionStatus.onchange = () => {
                         console.log("Permission state changed to:", permissionStatus.state);
                     };
-                    // If not granted, wait for user to click record
-                    if(permissionStatus.state === 'granted') {
-                        console.log("Microphone permission already granted");
-                    }
                 })
                 .catch(error => {
                     console.error("Error checking permission:", error);
+                    if (callback && typeof callback === 'function') {
+                        callback(false);
+                    }
                 });
         } else {
-            console.log("Permissions API not available, will request on record click");
+            console.log("Permissions API not available");
+            if (callback && typeof callback === 'function') {
+                callback(false);
+            }
         }
     }
 
     // Ask for microphone access and do a callback if allowed
     requestMicrophoneAccess(callback) {
         console.log("Requesting microphone access...");
+        
+        // Set flag to prevent multiple requests
+        this.hasRequestedPermission = true;
+        
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 console.log("Microphone access granted!");
                 this.stream = stream;
+                
+                // Remove banner if it exists
+                const banner = document.getElementById('mic-permission-banner');
+                if (banner) {
+                    banner.remove();
+                }
+                
                 if (callback && typeof callback === 'function') {
                     callback(true);
                 }
             })
             .catch(error => {
                 console.error("Error accessing microphone:", error);
-                alert("You need to allow microphone access to record sounds.");
+                
+                // Update banner if it exists
+                const banner = document.getElementById('mic-permission-banner');
+                if (banner) {
+                    banner.style.backgroundColor = '#f8d7da';
+                    banner.style.color = '#721c24';
+                    const message = banner.querySelector('div');
+                    if (message) {
+                        message.textContent = 'Microphone access denied. Recording will not work.';
+                    }
+                }
+                
                 if (callback && typeof callback === 'function') {
                     callback(false);
                 }
@@ -82,8 +202,9 @@ class SoundRecorder {
         // Discard buttons
         const discardButtons = document.querySelectorAll('.discard-button');
         discardButtons.forEach(button => {
+            // Initially disable all discard buttons
             button.disabled = true;
-
+            
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
                 this.discardRecording(letter);
@@ -97,16 +218,6 @@ class SoundRecorder {
                 this.saveSessionSoundSet();
             });
         }
-
-        // Add debug button to test microphone
-        if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-            const testButton = document.createElement('button');
-            testButton.textContent = "TestMic";
-            testButton.classList.add('duo');
-            testButton.style.margin = "10px";
-            testButton.addEventListener('click', () => this.requestMicrophoneAccess());
-            document.getElementById('custom-sound-set-container').appendChild(testButton);
-        }
     }
 
     // Toggle recording for a specific slot
@@ -119,14 +230,30 @@ class SoundRecorder {
             return;
         }
 
+        // If we already have a stream, use it directly
         if (this.stream && this.stream.active) {
             this.toggleRecording(letter, button);
             return;
         }
 
-        this.requestMicrophoneAccess((granted) => {
-            if (granted) {
-                this.toggleRecording(letter, button);
+        // Check current permission status first
+        this.checkMicrophonePermission((hasPermission) => {
+            if (hasPermission) {
+                // We have permission already, just start recording
+                this.requestMicrophoneAccess((granted) => {
+                    if (granted) {
+                        this.toggleRecording(letter, button);
+                    }
+                });
+            } else {
+                // We need to request permission first
+                // Show the banner if it's not already visible
+                if (!document.getElementById('mic-permission-banner')) {
+                    this.createPermissionBanner();
+                }
+                
+                // Alert the user to use the banner
+                alert("Please click 'Grant Access' in the banner at the top of the page to enable recording.");
             }
         });
     }
@@ -174,11 +301,13 @@ class SoundRecorder {
         console.log("Starting recording...");
         this.audioChunks = [];
 
+        // If we already have a stream, use it directly
         if (this.stream && this.stream.active) {
             this.setupMediaRecorder(this.stream);
             return;
         }
 
+        // Otherwise request a new stream
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 this.stream = stream;
@@ -186,7 +315,7 @@ class SoundRecorder {
             })
             .catch(error => {
                 console.error("Error starting recording:", error);
-                alert("Unable to access microphone.Please check permissions.");
+                alert("Unable to access microphone. Please check permissions.");
                 this.resetRecordingState();
             });
     }
@@ -220,6 +349,7 @@ class SoundRecorder {
                         dataUrl: reader.result
                     };
 
+                    // Enable the discard button
                     const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
                     if (discardButton) {
                         discardButton.disabled = false;
@@ -320,7 +450,7 @@ class SoundRecorder {
         dropdown.appendChild(option);
     }
 
-    // Cleanup up redundant resources
+    // Clean up resources when no longer needed
     cleanup() {
         // Stop any ongoing recording
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
@@ -344,7 +474,7 @@ class SoundRecorder {
 // Initialise the sound recorder with the tangible instance
 let soundRecorderInstance;
 
-// Wait for tangible top be initialised before creating the sound recorder
+// Wait for tangible to be initialised before creating the sound recorder
 const waitForTangible = setInterval(() => {
     // Check if window.tangible has been created by main.js
     if (window.tangible instanceof Tangible) {
@@ -354,7 +484,7 @@ const waitForTangible = setInterval(() => {
     }
 }, 100);
 
-// Add event listener for page unload to clean up resources
+// Add an event listener for page unload to clean up resources
 window.addEventListener('beforeunload', () => {
     if (soundRecorderInstance) {
         soundRecorderInstance.cleanup();
