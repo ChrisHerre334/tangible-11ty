@@ -307,9 +307,7 @@ class SoundRecorder {
                     
                     // Enable the discard button for this recording
                     const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-                    if (discardButton) {
-                        discardButton.disabled = false;
-                    }
+                    discardButton.disabled = false;
 
                     // Create an audio element to test playback
                     const audio = new Audio(audioUrl);
@@ -364,9 +362,7 @@ class SoundRecorder {
 
             // Disable the discard button
             const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
-            if (discardButton) {
-                discardButton.disabled = true;
-            }
+            discardButton.disabled = true;
 
             // Reset progress bar
             const progressBar = document.querySelector(`.progress-bar[data-letter="${letter}"]`);
