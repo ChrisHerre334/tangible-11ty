@@ -304,8 +304,8 @@ class SoundRecorder {
                         letter: this.recordingSlot,
                         dataUrl: reader.result
                     };
-
-                    // Enable the discard button
+                    
+                    // Enable the discard button for this recording
                     const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
                     if (discardButton) {
                         discardButton.disabled = false;
@@ -314,6 +314,7 @@ class SoundRecorder {
                     // Create an audio element to test playback
                     const audio = new Audio(audioUrl);
                     audio.play();
+                    console.log(`Recorded sound for letter ${this.recordingSlot}`);
                 };
                 reader.readAsDataURL(audioBlob);
             }
@@ -359,6 +360,7 @@ class SoundRecorder {
         // Remove from session sound set
         if (this.tangible.sessionSoundSet && this.tangible.sessionSoundSet[letter]) {
             delete this.tangible.sessionSoundSet[letter];
+            console.log(`Removed sound for letter ${letter}`);
 
             // Disable the discard button
             const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
@@ -384,7 +386,10 @@ class SoundRecorder {
 
         const soundsArray = Object.values(this.tangible.sessionSoundSet);
         const setName = "Custom_" + new Date().getTime();
-
+        console.log("Saving sounds:", soundsArray);
+        
+        // Make sure the correct format is used for tangible sound sets
+        // The format must match what tangible.js expects
         this.tangible.soundSets[setName] = [soundsArray, []];
         this.updateSoundSetDropdown(setName);
         this.tangible.preloads(setName);
@@ -482,40 +487,52 @@ window.requestMicrophonePermission = function() {
         });
 };
 
-// Add a mic request button that appears immediately
+// Add a mic request button inside the sound set div
 (function() {
-    console.log("Adding mic permission button to page");
+    console.log("Adding mic permission button to sound set div");
     
     function addMicButton() {
+        const soundSetDiv = document.getElementById('custom-sound-set-container');
+        if (!soundSetDiv) {
+            console.log("Could not find sound set container, waiting...");
+            setTimeout(addMicButton, 200);
+            return;
+        }
+        
         const button = document.createElement('button');
         button.id = 'mic-permission-request-button';
         button.textContent = 'Allow Microphone';
+        button.className = 'duo'; // Match the style of other buttons
         button.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
+            display: inline-block;
+            margin: 5px;
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
-            z-index: 9999;
         `;
         
         button.addEventListener('click', () => {
             window.requestMicrophonePermission();
         });
         
-        document.body.appendChild(button);
-        console.log("Mic permission button added to page");
+        // Insert at the top of the sound set div, right after the h2
+        const h2 = soundSetDiv.querySelector('h2');
+        if (h2 && h2.nextSibling) {
+            soundSetDiv.insertBefore(button, h2.nextSibling);
+        } else {
+            soundSetDiv.appendChild(button);
+        }
+        console.log("Mic permission button added to sound set div");
     }
     
-    // If document body exists, add button now, otherwise wait for DOM content loaded
-    if (document.body) {
-        addMicButton();
+    // Wait for DOM content loaded to ensure the container exists
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', () => setTimeout(addMicButton, 200));
     } else {
-        window.addEventListener('DOMContentLoaded', addMicButton);
+        setTimeout(addMicButton, 200);
     }
 })();
 
