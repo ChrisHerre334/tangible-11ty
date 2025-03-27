@@ -15,135 +15,93 @@ class SoundRecorder {
         this.stream = null;
         this.hasRequestedPermission = false;
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                this.initEventListeners();
-                this.createPermissionBanner();
-            });
-        } else {
-            // DOM already loaded, initialize immediately
-            this.initEventListeners();
+        console.log("SoundRecorder constructor called");
+        this.initEventListeners();
+        
+        // Create permission banner with a slight delay to ensure DOM is ready
+        setTimeout(() => {
             this.createPermissionBanner();
-        }
+        }, 500);
     }
 
     // Create a banner to request microphone permission with user interaction
     createPermissionBanner() {
-        // First check if we already have permission
-        this.checkMicrophonePermission((hasPermission) => {
-            // If we already have permission, no need to show the banner
-            if (hasPermission) {
-                console.log("Microphone permission already granted, not showing banner");
-                return;
-            }
-            
-            // Create banner element
-            const banner = document.createElement('div');
-            banner.id = 'mic-permission-banner';
-            banner.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background-color: #f8d7da;
-                color: #721c24;
-                padding: 10px;
-                text-align: center;
-                z-index: 9999;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            `;
+        console.log("Creating permission banner");
+        
+        // Create banner element
+        const banner = document.createElement('div');
+        banner.id = 'mic-permission-banner';
+        banner.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            text-align: center;
+            z-index: 9999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
 
-            // Create message and button
-            const message = document.createElement('div');
-            message.textContent = 'Microphone access is required to record sounds. Please allow access.';
-            
-            const button = document.createElement('button');
-            button.textContent = 'Grant Access';
-            button.style.cssText = `
-                background-color: #28a745;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-            `;
-            
-            const dismissButton = document.createElement('button');
-            dismissButton.textContent = '×';
-            dismissButton.style.cssText = `
-                background: none;
-                border: none;
-                color: #721c24;
-                font-size: 20px;
-                cursor: pointer;
-                margin-left: 10px;
-            `;
+        // Create message and button
+        const message = document.createElement('div');
+        message.textContent = 'Microphone access is required to record sounds. Please allow access.';
+        
+        const button = document.createElement('button');
+        button.textContent = 'Grant Access';
+        button.style.cssText = `
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        `;
+        
+        const dismissButton = document.createElement('button');
+        dismissButton.textContent = '×';
+        dismissButton.style.cssText = `
+            background: none;
+            border: none;
+            color: #721c24;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: 10px;
+        `;
 
-            // Add event listeners
-            button.addEventListener('click', () => {
-                this.requestMicrophoneAccess((granted) => {
-                    if (granted) {
-                        banner.style.backgroundColor = '#d4edda';
-                        banner.style.color = '#155724';
-                        message.textContent = 'Microphone access granted. You can now record sounds.';
-                        button.style.display = 'none';
-                        
-                        // Remove banner after 3 seconds
-                        setTimeout(() => {
-                            banner.remove();
-                        }, 3000);
-                    }
-                });
+        // Add event listeners
+        button.addEventListener('click', () => {
+            console.log("Grant access button clicked");
+            this.requestMicrophoneAccess((granted) => {
+                if (granted) {
+                    banner.style.backgroundColor = '#d4edda';
+                    banner.style.color = '#155724';
+                    message.textContent = 'Microphone access granted. You can now record sounds.';
+                    button.style.display = 'none';
+                    
+                    // Remove banner after 3 seconds
+                    setTimeout(() => {
+                        banner.remove();
+                    }, 3000);
+                }
             });
-            
-            dismissButton.addEventListener('click', () => {
-                banner.remove();
-            });
-
-            // Add elements to banner
-            banner.appendChild(message);
-            banner.appendChild(button);
-            banner.appendChild(dismissButton);
-
-            // Add banner to document
-            document.body.appendChild(banner);
         });
-    }
+        
+        dismissButton.addEventListener('click', () => {
+            banner.remove();
+        });
 
-    // Check if microphone is already allowed
-    checkMicrophonePermission(callback) {
-        console.log("Checking microphone permission status...");
+        // Add elements to banner
+        banner.appendChild(message);
+        banner.appendChild(button);
+        banner.appendChild(dismissButton);
 
-        // Check if the API is available
-        if (navigator.permissions && navigator.permissions.query) {
-            navigator.permissions.query({ name: 'microphone' })
-                .then(permissionStatus => {
-                    console.log("Microphone permission status:", permissionStatus.state);
-                    
-                    if (callback && typeof callback === 'function') {
-                        callback(permissionStatus.state === 'granted');
-                    }
-                    
-                    // Listen for changes to permission status
-                    permissionStatus.onchange = () => {
-                        console.log("Permission state changed to:", permissionStatus.state);
-                    };
-                })
-                .catch(error => {
-                    console.error("Error checking permission:", error);
-                    if (callback && typeof callback === 'function') {
-                        callback(false);
-                    }
-                });
-        } else {
-            console.log("Permissions API not available");
-            if (callback && typeof callback === 'function') {
-                callback(false);
-            }
-        }
+        // Add banner to document
+        document.body.appendChild(banner);
+        console.log("Permission banner added to document");
     }
 
     // Ask for microphone access and do a callback if allowed
@@ -190,8 +148,12 @@ class SoundRecorder {
 
     // Initialise event listeners for the custom sound set UI
     initEventListeners() {
+        console.log("Initializing event listeners");
+        
         // Record buttons
         const recordButtons = document.querySelectorAll('.record-button');
+        console.log(`Found ${recordButtons.length} record buttons`);
+        
         recordButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
@@ -201,6 +163,8 @@ class SoundRecorder {
 
         // Discard buttons
         const discardButtons = document.querySelectorAll('.discard-button');
+        console.log(`Found ${discardButtons.length} discard buttons`);
+        
         discardButtons.forEach(button => {
             // Initially disable all discard buttons
             button.disabled = true;
@@ -214,9 +178,12 @@ class SoundRecorder {
         // Submit button
         const submitButton = document.getElementById('submit-sound-set');
         if (submitButton) {
+            console.log("Found submit button");
             submitButton.addEventListener('click', () => {
                 this.saveSessionSoundSet();
             });
+        } else {
+            console.log("Submit button not found");
         }
     }
 
@@ -236,24 +203,13 @@ class SoundRecorder {
             return;
         }
 
-        // Check current permission status first
-        this.checkMicrophonePermission((hasPermission) => {
-            if (hasPermission) {
-                // We have permission already, just start recording
-                this.requestMicrophoneAccess((granted) => {
-                    if (granted) {
-                        this.toggleRecording(letter, button);
-                    }
-                });
+        // Otherwise request microphone access again
+        this.requestMicrophoneAccess((granted) => {
+            if (granted) {
+                this.toggleRecording(letter, button);
             } else {
-                // We need to request permission first
-                // Show the banner if it's not already visible
-                if (!document.getElementById('mic-permission-banner')) {
-                    this.createPermissionBanner();
-                }
-                
-                // Alert the user to use the banner
-                alert("Please click 'Grant Access' in the banner at the top of the page to enable recording.");
+                // Show a simple alert if permission was denied
+                alert("You need to allow microphone access to record sounds.");
             }
         });
     }
@@ -470,6 +426,98 @@ class SoundRecorder {
         }
     }
 }
+
+// Create global function to force microphone permission request
+window.requestMicrophonePermission = function() {
+    console.log("Global microphone permission request function called");
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            console.log("Microphone permission granted via global function!");
+            
+            // Store on window for possible later use
+            window._micStream = stream;
+            
+            // Add visual feedback
+            const feedback = document.createElement('div');
+            feedback.textContent = "✓ Microphone access granted";
+            feedback.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background-color: #28a745;
+                color: white;
+                padding: 10px;
+                border-radius: 4px;
+                z-index: 10000;
+            `;
+            document.body.appendChild(feedback);
+            
+            // Remove feedback after 3 seconds
+            setTimeout(() => {
+                feedback.remove();
+            }, 3000);
+        })
+        .catch(error => {
+            console.error("Error accessing microphone:", error);
+            
+            // Add visual feedback for error
+            const feedback = document.createElement('div');
+            feedback.textContent = "❌ Microphone access denied";
+            feedback.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background-color: #dc3545;
+                color: white;
+                padding: 10px;
+                border-radius: 4px;
+                z-index: 10000;
+            `;
+            document.body.appendChild(feedback);
+            
+            // Remove feedback after 3 seconds
+            setTimeout(() => {
+                feedback.remove();
+            }, 3000);
+        });
+};
+
+// Add a mic request button that appears immediately
+(function() {
+    console.log("Adding mic permission button to page");
+    
+    function addMicButton() {
+        const button = document.createElement('button');
+        button.id = 'mic-permission-request-button';
+        button.textContent = 'Allow Microphone';
+        button.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 9999;
+        `;
+        
+        button.addEventListener('click', () => {
+            window.requestMicrophonePermission();
+        });
+        
+        document.body.appendChild(button);
+        console.log("Mic permission button added to page");
+    }
+    
+    // If document body exists, add button now, otherwise wait for DOM content loaded
+    if (document.body) {
+        addMicButton();
+    } else {
+        window.addEventListener('DOMContentLoaded', addMicButton);
+    }
+})();
 
 // Initialise the sound recorder with the tangible instance
 let soundRecorderInstance;
