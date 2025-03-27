@@ -166,12 +166,11 @@ class SoundRecorder {
         console.log(`Found ${discardButtons.length} discard buttons`);
         
         discardButtons.forEach(button => {
-            // Initially disable all discard buttons
-            button.disabled = true;
             
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
                 this.discardRecording(letter);
+                button.disabled = true;
             });
         });
 
@@ -332,10 +331,6 @@ class SoundRecorder {
             console.log("MediaRecorder already inactive or not created");
         }
 
-        // Enable the discard button for this recording
-        const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-        discardButton.disabled = false;
-        
         this.resetRecordingState();
         
     }
@@ -364,10 +359,6 @@ class SoundRecorder {
         if (this.tangible.sessionSoundSet && this.tangible.sessionSoundSet[letter]) {
             delete this.tangible.sessionSoundSet[letter];
             console.log(`Removed sound for letter ${letter}`);
-
-            // Disable the discard button
-            const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
-            discardButton.disabled = true;
 
             // Reset progress bar
             const progressBar = document.querySelector(`.progress-bar[data-letter="${letter}"]`);
