@@ -12,12 +12,13 @@ class SoundRecorder {
         this.maxRecordingTime = 5;  // seconds
         this.recordingInterval = null;
         this.recordingStartTime = null;
+        this.stream = null;
 
         // Initialise when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             this.initEventListeners();
             // Request audio permission when the page loads
-            this.checkMicrophonePermission();
+            this.requestMicrophoneAccess();
         });
     }
 
@@ -26,8 +27,8 @@ class SoundRecorder {
         console.log("Checking microphone permission status...");
 
         // Check if the API is available
-        if (navigator.permissions && navigator.permission.query) {
-            navigator.permission.query({ name: 'microphone' })
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'microphone' })
                 .then(permissionStatus => {
                     console.log("Microphone permission status:", permissionStatus.state);
                     // Listen for changes to permission status
@@ -36,7 +37,7 @@ class SoundRecorder {
                     };
                     // If not granted, wait for user to click record
                     if(permissionStatus.state === 'granted') {
-                        console.log("Microphone permission already granted")
+                        console.log("Microphone permission already granted");
                     }
                 })
                 .catch(error => {
@@ -53,7 +54,7 @@ class SoundRecorder {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 console.log("Microphone access granted!");
-                stream.getTracks().forEach(track => track.stop());
+                this.stream = stream;
                 if (callback && typeof callback === 'function') {
                     callback(true);
                 }
@@ -81,6 +82,8 @@ class SoundRecorder {
         // Discard buttons
         const discardButtons = document.querySelectorAll('.discard-button');
         discardButtons.forEach(button => {
+            button.disabled = true;
+
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
                 this.discardRecording(letter);
@@ -95,7 +98,7 @@ class SoundRecorder {
             });
         }
 
-        // Add debug button to test microphon
+        // Add debug button to test microphone
         if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
             const testButton = document.createElement('button');
             testButton.textContent = "TestMic";
@@ -116,33 +119,16 @@ class SoundRecorder {
             return;
         }
 
-        // Check for mic permission, request otherwise
-        if (navigator.permissions && navigator.permissions.query) {
-            navigator.permissions.query({name: 'microphone'})
-                .then(permissionStatus => {
-                    if (permissionStatus.state === 'granted') {
-                        this.toggleRecording(letter, button);
-                    } else {
-                        this.requestMicrophoneAccess(() => {
-                            this.toggleRecording(letter, button);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error("Error checking permission:", error);
-                    // Fallback to direct request
-                    this.requestMicrophoneAccess(() => {
-                        this.toggleRecording(letter, button);
-                    });
-                });
-        } else {
-            // Fallback for browsers without permissions API
-            this.requestMicrophoneAccess((granted) => {
-                if (granted) {
-                    this.toggleRecording(letter, button);
-                }
-            });
+        if (this.stream && this.stream.active) {
+            this.toggleRecording(letter, button);
+            return;
         }
+
+        this.requestMicrophoneAccess((granted) => {
+            if (granted) {
+                this.toggleRecording(letter, button);
+            }
+        });
     }
 
     toggleRecording(letter, button) {
@@ -188,61 +174,67 @@ class SoundRecorder {
         console.log("Starting recording...");
         this.audioChunks = [];
 
+        if (this.stream && this.stream.active) {
+            this.setupMediaRecorder(this.stream);
+            return;
+        }
+
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
-                console.log("Got audio stream, creating recorder");
-                this.mediaRecorder = new MediaRecorder(stream);
-
-                this.mediaRecorder.addEventListener('dataavailable', event => {
-                    console.log("Received audio data chunk");
-                    this.audioChunks.push(event.data);
-                });
-
-                this.mediaRecorder.addEventListener('stop', () => {
-                    console.log("Recording stopped, processing audio");
-                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-
-                    if (this.recordingSlot) {
-                        // Save the audio for this slot
-                        if (!this.tangible.sessionSoundSet) {
-                            this.tangible.sessionSoundSet = {};
-                        }
-
-                        // Convert blob to data URL for storage
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            console.log("Audio converted to data URL");
-                            this.tangible.sessionSoundSet[this.recordingSlot] = {
-                                letter: this.recordingSlot,
-                                dataUrl: reader.result
-                            };
-
-                            // Enable the discard button
-                            const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-                            if (discardButton) {
-                                discardButton.disabled = false;
-                            }
-
-                            // Create an audio element to test playback
-                            const audio = new Audio(audioUrl);
-                            audio.play();
-                        };
-                        reader.readAsDataURL(audioBlob);
-                    }
-
-                    // Stop all tracks on the stream
-                    stream.getTracks().forEach(track => track.stop());
-                });
-
-                this.mediaRecorder.start();
-                console.log("MediaRecorder started");
+                this.stream = stream;
+                this.setupMediaRecorder(stream);
             })
             .catch(error => {
                 console.error("Error starting recording:", error);
-                alert("Unable to access microphone. Please check permissions.");
+                alert("Unable to access microphone.Please check permissions.");
                 this.resetRecordingState();
             });
+    }
+
+    setupMediaRecorder(stream) {
+        console.log("Got audio stream, creating recorder");
+        this.mediaRecorder = new MediaRecorder(stream);
+
+        this.mediaRecorder.addEventListener('dataavailable', event => {
+            console.log("Received audio data chunk");
+            this.audioChunks.push(event.data);
+        });
+
+        this.mediaRecorder.addEventListener('stop', () => {
+            console.log("Recording stopped, processing audio");
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            if (this.recordingSlot) {
+                // Save the audio for this slot
+                if (!this.tangible.sessionSoundSet) {
+                    this.tangible.sessionSoundSet = {};
+                }
+
+                // Convert blob to data URL for storage
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    console.log("Audio converted to data URL");
+                    this.tangible.sessionSoundSet[this.recordingSlot] = {
+                        letter: this.recordingSlot,
+                        dataUrl: reader.result
+                    };
+
+                    const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
+                    if (discardButton) {
+                        discardButton.disabled = false;
+                    }
+
+                    // Create an audio element to test playback
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                };
+                reader.readAsDataURL(audioBlob);
+            }
+        });
+
+        this.mediaRecorder.start();
+        console.log("MediaRecorder started");
     }
 
     // Stop the current recording
@@ -327,6 +319,26 @@ class SoundRecorder {
 
         dropdown.appendChild(option);
     }
+
+    // Cleanup up redundant resources
+    cleanup() {
+        // Stop any ongoing recording
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+
+        // Stop and release media stream tracks
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+
+        // Clear any intervals
+        if (this.recordingInterval) {
+            clearInterval(this.recordingInterval);
+            this.recordingInterval = null;
+        }
+    }
 }
 
 // Initialise the sound recorder with the tangible instance
@@ -341,6 +353,13 @@ const waitForTangible = setInterval(() => {
         clearInterval(waitForTangible);
     }
 }, 100);
+
+// Add event listener for page unload to clean up resources
+window.addEventListener('beforeunload', () => {
+    if (soundRecorderInstance) {
+        soundRecorderInstance.cleanup();
+    }
+});
 
 // Export the class for potential future use
 export default SoundRecorder;
