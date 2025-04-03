@@ -114,6 +114,16 @@ class SoundRecorder {
         } else {
             console.log("Submit button not found");
         }
+
+        // Enable discard buttons for any existing recordings
+        if (this.tangible.sessionSoundSet) {
+            for (const letter in this.tangible.sessionSoundSet) {
+                const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
+                if (discardButton) {
+                    discardButton.disabled = false;
+                }
+            }
+        }
     }
 
     // Toggle recording for a specific slot
@@ -163,7 +173,7 @@ class SoundRecorder {
             console.error("Progress bar not found for letter:", letter);
         }
 
-        this.startRecording();
+        this.startRecording(letter);
 
         // Timer
         this.recordingStartTime = Date.now();
@@ -177,18 +187,18 @@ class SoundRecorder {
             
             // Stop recording if max time reached
             if (elapsed >= this.maxRecordingTime) {
-                this.stopRecording();
+                this.stopRecording(letter);
             }
         }, 100);
     }
 
-    startRecording() {
+    startRecording(letter) {
         console.log("Starting recording...");
         this.audioChunks = [];
 
         // If we already have a stream, use it directly
         if (this.stream && this.stream.active) {
-            this.setupMediaRecorder(this.stream);
+            this.setupMediaRecorder(this.stream, letter);
             return;
         }
 
@@ -196,7 +206,7 @@ class SoundRecorder {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 this.stream = stream;
-                this.setupMediaRecorder(stream);
+                this.setupMediaRecorder(stream, letter);
             })
             .catch(error => {
                 console.error("Error starting recording:", error);
@@ -205,9 +215,10 @@ class SoundRecorder {
             });
     }
 
-    setupMediaRecorder(stream) {
+    setupMediaRecorder(stream, letter) {
         console.log("Got audio stream, creating recorder");
         this.mediaRecorder = new MediaRecorder(stream);
+        this.mediaRecorder._recordingSlot = letter;
 
         this.mediaRecorder.addEventListener('dataavailable', event => {
             console.log("Received audio data chunk");
@@ -215,39 +226,46 @@ class SoundRecorder {
         });
 
         this.mediaRecorder.addEventListener('stop', () => {
-            console.log("Recording stopped, processing audio");
+            const recordedLetter = this.mediaRecorder._recordingSlot;
+            console.log("Recording stopped for letter:", recordedLetter, "processing audio");
+            
+            if (!recordedLetter) {
+                console.error("No letter associated with this recording");
+                return;
+            }
+
             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
             const audioUrl = URL.createObjectURL(audioBlob);
 
-            const slotLetter = this.mediaRecorder._recordingSlot;
-            if (slotLetter) {
-                // Save the audio for this slot
-                if (!this.tangible.sessionSoundSet) {
-                    this.tangible.sessionSoundSet = {};
-                }
-
-                // Enable the discard button for this slot
-                const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-                if (discardButton) {
-                    discardButton.disabled = false;
-                }
-
-                // Convert blob to data URL for storage
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    console.log("Audio converted to data URL");
-                    this.tangible.sessionSoundSet[this.recordingSlot] = {
-                        letter: this.recordingSlot,
-                        dataUrl: reader.result
-                    };
-
-                    // Create an audio element to test playback
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                    console.log(`Recorded sound for letter ${this.recordingSlot}`);
-                };
-                reader.readAsDataURL(audioBlob);
+            // Save the audio for this slot
+            if (!this.tangible.sessionSoundSet) {
+                this.tangible.sessionSoundSet = {};
             }
+
+            // Enable the discard button for this slot
+            const discardButton = document.querySelector(`.discard-button[data-letter="${recordedLetter}"]`);
+            if (discardButton) {
+                console.log(`Enabling discard button for letter ${recordedLetter}`);
+                discardButton.disabled = false;
+            } else {
+                console.error(`Discard button not found for letter ${recordedLetter}`);
+            }
+
+            // Convert blob to data URL for storage
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                console.log("Audio converted to data URL for letter:", recordedLetter);
+                this.tangible.sessionSoundSet[recordedLetter] = {
+                    letter: recordedLetter,
+                    dataUrl: reader.result
+                };
+
+                // Create an audio element to test playback
+                const audio = new Audio(audioUrl);
+                audio.play();
+                console.log(`Recorded sound for letter ${recordedLetter}`);
+            };
+            reader.readAsDataURL(audioBlob);
         });
 
         this.mediaRecorder.start();
@@ -255,13 +273,15 @@ class SoundRecorder {
     }
 
     // Stop the current recording
-    stopRecording() {
-        console.log("Stopping recording...");
-        const currentSlot = this.recordingSlot;
+    stopRecording(letterToStop) {
+        const letter = letterToStop || this.recordingSlot;
+        console.log("Stopping recording for letter:", letter);
 
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            // Ensure the letter is stored properly before stopping
+            this.mediaRecorder._recordingSlot = letter;
             this.mediaRecorder.stop();
-            console.log("MediaRecorder stopped");
+            console.log("MediaRecorder stopped for letter:", letter);
         } else {
             console.log("MediaRecorder already inactive or not created");
         }
@@ -303,6 +323,7 @@ class SoundRecorder {
             // Disable the discard button for this slot
             const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
             if (discardButton) {
+                console.log(`Disabling discard button for letter ${letter}`);
                 discardButton.disabled = true;
             }
         }
