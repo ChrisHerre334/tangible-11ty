@@ -131,8 +131,7 @@ button:hover {
 /* Custom Sound Set Styles */
 .recording-scroll-container {
   width: 100%;
-  height: 200px;
-  max-height: 200px;
+  height: 400px;
   overflow-y: scroll;
   overflow-x: hidden;
   display: block;
@@ -145,9 +144,10 @@ button:hover {
 .recording-scroll {
   display: flex;
   flex-direction: column;
-  padding: 10px 0;
-  min-height: min-content;
   width: 100%;
+  height: 400px;
+  overflow-y: auto;
+  padding: 10px;
 }
 
 .recording-slot {
