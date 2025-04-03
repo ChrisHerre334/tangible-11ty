@@ -91,17 +91,11 @@ class SoundRecorder {
                 this.handleRecordButtonClick(letter, e.currentTarget);
             });
         });
-
-        // Discard buttons
-        const discardButtons = document.querySelectorAll('.discard-button');
-        console.log(`Found ${discardButtons.length} discard buttons`);
         
         discardButtons.forEach(button => {
-            
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
                 this.discardRecording(letter);
-                button.disabled = true;
             });
         });
 
@@ -124,8 +118,6 @@ class SoundRecorder {
         // If already recording this slot, stop
         if (this.recordingSlot === letter) {
             this.stopRecording();
-            const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-            discardButton.disabled = false;
             return;
         }
 
@@ -236,10 +228,6 @@ class SoundRecorder {
                         letter: this.recordingSlot,
                         dataUrl: reader.result
                     };
-                    
-                    // Enable the discard button for this recording
-                    const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
-                    discardButton.disabled = false;
 
                     // Create an audio element to test playback
                     const audio = new Audio(audioUrl);
