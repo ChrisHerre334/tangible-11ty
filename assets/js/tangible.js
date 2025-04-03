@@ -56,22 +56,22 @@ export default class Tangible {
         this.topcodeHeight = 40;
         this.topcodeWidth = 100;
         this.variableIncrementer = 0;
-		this.mode = "environment";
+        this.mode = "environment";
         this.declarations = "";
         // Codes currently seen
         this.currentCodes = [];
         this.soundSets = {
-            GimmeGimmeGimme: [["A","B","C","D"],['challenge1','challenge2']],
-            EyeOfTheTiger: [["A","B","C","D"],['challenge1','challenge2']],
-            DoctorFoster: [["A","B","C","D","E","F"],['']],
-            JingleBells: [["A","B","C","D","E","F"],['challenge1']],
-            Limerick1: [["A","B","C","D","E","F","G","H"],['challenge1']],
-            Limerick2: [["A","B","C","D","E","F","G"],['']],
-            Limerick3: [["A","B","C","D","E"],['challenge1']],
-            Poem: [["A","B","C","D","E","F","G","H"],['']],
-            Popcorn: [["A","B","C","D"],['challenge1']],
-            RowYourBoat: [["A","B","C","D","E","F","G","H"],['challenge1']],
-            Story: [["A","B","C","D","E","F","G","H"],['challenge1']]
+            GimmeGimmeGimme: [["A", "B", "C", "D"], ['challenge1', 'challenge2']],
+            EyeOfTheTiger: [["A", "B", "C", "D"], ['challenge1', 'challenge2']],
+            DoctorFoster: [["A", "B", "C", "D", "E", "F"], ['']],
+            JingleBells: [["A", "B", "C", "D", "E", "F"], ['challenge1']],
+            Limerick1: [["A", "B", "C", "D", "E", "F", "G", "H"], ['challenge1']],
+            Limerick2: [["A", "B", "C", "D", "E", "F", "G"], ['']],
+            Limerick3: [["A", "B", "C", "D", "E"], ['challenge1']],
+            Poem: [["A", "B", "C", "D", "E", "F", "G", "H"], ['']],
+            Popcorn: [["A", "B", "C", "D"], ['challenge1']],
+            RowYourBoat: [["A", "B", "C", "D", "E", "F", "G", "H"], ['challenge1']],
+            Story: [["A", "B", "C", "D", "E", "F", "G", "H"], ['challenge1']]
         };
 
         // Custom sound set in session
@@ -83,44 +83,99 @@ export default class Tangible {
      *
      */
     preloads(soundSet) {
-		var soundsTemp = {};
+        var soundsTemp = {};
 
         if (soundSet.startsWith("Custom_")) {
             // For custom sets, handle the letters from the array
             const letters = this.soundSets[soundSet][0];
 
-            if (this .sessionSoundSet) {
+            if (this.sessionSoundSet) {
                 letters.forEach((letter) => {
                     if (this.sessionSoundSet[letter]) {
                         const audio = new Audio();
                         audio.src = this.sessionSoundSet[letter].dataUrl;
+
+                        // For iOS, preload the audio
+                        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                            audio.preload = 'auto';
+                            audio.load();
+                        }
+
                         soundsTemp[letter] = audio;
                     }
                 });
             }
         } else {
             // For built-in sets, use original approach
-            this.soundSets[soundSet][0].forEach(function(element) {
-                soundsTemp[element] = new Audio("/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3");
+            this.soundSets[soundSet][0].forEach(function (element) {
+                const audio = new Audio("/tangible-11ty/assets/sound/" + soundSet + "/" + element + ".mp3");
+
+                // For iOS, preload the audio
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    audio.preload = 'auto';
+                    audio.load();
+                }
+
+                soundsTemp[element] = audio;
             });
         }
-		
-		document.getElementById("challenges").innerHTML = '';
-		let challenge = 1;
-		if (this.soundSets[soundSet][1] != ''){
-		    this.soundSets[soundSet][1].forEach(function(element) {
-		        document.getElementById("challenges").innerHTML += "<h3>Challenge "+challenge+"</h3><audio controls><source src='/tangible-11ty/assets/sound/"+soundSet+"/"+element+".mp3' type='audio/mpeg'></audio>";
-		        challenge += 1;
-		    });
-		}
-		
-		this.sounds = soundsTemp;
+
+        document.getElementById("challenges").innerHTML = '';
+        let challenge = 1;
+        if (this.soundSets[soundSet][1] != '') {
+            this.soundSets[soundSet][1].forEach(function (element) {
+                document.getElementById("challenges").innerHTML += "<h3>Challenge " + challenge + "</h3><audio controls><source src='/tangible-11ty/assets/sound/" + soundSet + "/" + element + ".mp3' type='audio/mpeg'></audio>";
+                challenge += 1;
+            });
+        }
+
+        this.sounds = soundsTemp;
     }
 
     playAudio(audio) {
-     return new Promise(res => {
-            audio.play();
-            audio.onended = res;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        return new Promise((resolve) => {
+            // Make sure the audio is ready to play on iOS
+            if (isIOS) {
+                audio.load();
+            }
+
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log("Audio playback started successfully");
+                        audio.onended = resolve;
+                    })
+                    .catch(error => {
+                        console.error("Error playing audio:", error);
+
+                        // On error, try one fallback attempt with user interaction context on iOS
+                        if (isIOS) {
+                            console.log("Trying iOS fallback play method");
+
+                            // Use a short timeout to try again
+                            setTimeout(() => {
+                                audio.play()
+                                    .then(() => {
+                                        console.log("Fallback audio playback succeeded");
+                                        audio.onended = resolve;
+                                    })
+                                    .catch(err => {
+                                        console.error("Fallback playback also failed:", err);
+                                        resolve(); // Resolve anyway to prevent blocking
+                                    });
+                            }, 10);
+                        } else {
+                            resolve(); // Resolve anyway to prevent blocking
+                        }
+                    });
+            } else {
+                // For older browsers
+                audio.onended = resolve;
+            }
         });
     }
 
@@ -136,10 +191,10 @@ export default class Tangible {
 
     /**
      Parse the topcodes that are found.  Each item in the array topCodes has:
-     x,y coordinates found and code: the int of topcode
-     @param topCodes Found codes
-     @return text translations of code
-     */
+         x,y coordinates found and code: the int of topcode
+         @param topCodes Found codes
+         @return text translations of code
+         */
     parseCodesAsText(topCodes) {
         let outputString = "";
         let grid = this.sortTopCodesIntoGrid(topCodes);
@@ -274,9 +329,29 @@ export default class Tangible {
     // await new Promise(resolve => setTimeout(resolve, 1500));
 
     async evalTile(tileCode, context) {
-
-        eval('(async (context) => {"use strict";' + tileCode + '})(context)');
-        return true;
+        try {
+            eval('(async (context) => {"use strict";' + tileCode + '})(context)');
+            return true;
+        } catch (error) {
+            console.error("Error evaluating tile code:", error);
+            // Show user-friendly error message
+            const errorDiv = document.createElement('div');
+            errorDiv.innerHTML = `<p>Error playing sounds: ${error.message}</p>`;
+            errorDiv.style.cssText = `
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                background-color: #f8d7da;
+                color: #721c24;
+                padding: 10px;
+                border-radius: 4px;
+                max-width: 80%;
+                z-index: 10000;
+            `;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+            return false;
+        }
     }
 
 
@@ -291,6 +366,42 @@ export default class Tangible {
             let parsedLines = [];
             parsedLines.push(this.evalTile(parsedJS, this));
             let done = await Promise.all(parsedLines);
+        }
+    }
+
+    // Cross-platform audio initialization
+    initializeAudio() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        // Unlock audio on iOS devices
+        if (isIOS) {
+            console.log("Setting up iOS audio unlock in Tangible");
+
+            const unlockAudio = () => {
+                // Create an audio context
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const audioCtx = new AudioContext();
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = audioCtx.createBuffer(1, 1, 22050);
+                    source.connect(audioCtx.destination);
+                    if (source.start) {
+                        source.start(0);
+                    } else {
+                        source.noteOn(0);
+                    }
+                    console.log("iOS audio context unlocked by Tangible");
+                }
+
+                // Remove event listeners after first interaction
+                document.removeEventListener('touchstart', unlockAudio);
+                document.removeEventListener('touchend', unlockAudio);
+                document.removeEventListener('click', unlockAudio);
+            };
+
+            document.addEventListener('touchstart', unlockAudio);
+            document.addEventListener('touchend', unlockAudio);
+            document.addEventListener('click', unlockAudio);
         }
     }
 
@@ -331,33 +442,35 @@ export default class Tangible {
         runButton.onclick = function () {
             this.runCode();
         }.bind(this);
-        
+
         let switchBtn = document.getElementById('switch-view');
         switchBtn.onclick = function () {
-        	TopCodes.stopVideoScan('video-canvas');
-        	if (this.mode === "user") {
-        		this.mode = "environment";
-        	} else {
-        		this.mode = "user";
-        	}
-        	TopCodes.startStopVideoScan('video-canvas',this.mode);
+            TopCodes.stopVideoScan('video-canvas');
+            if (this.mode === "user") {
+                this.mode = "environment";
+            } else {
+                this.mode = "user";
+            }
+            TopCodes.startStopVideoScan('video-canvas', this.mode);
         }.bind(this);
-        
+
         let cameraBtn = document.getElementById('camera-button');
         cameraBtn.onclick = function () {
-            TopCodes.startStopVideoScan('video-canvas',this.mode);
+            TopCodes.startStopVideoScan('video-canvas', this.mode);
         }.bind(this);
-        
+
         let setSelect = document.getElementById('soundSets');
         setSelect.onchange = function () {
-        	this.preloads(setSelect.value);
+            this.preloads(setSelect.value);
         }.bind(this);
 
         // Run preloads
         this.preloads("GimmeGimmeGimme");
 
+        // Initialize audio system for better iOS compatibility
+        this.initializeAudio();
+
         // Make tangible available globally for the sound recorder
         window.tangible = this;
     }
-
 }
