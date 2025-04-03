@@ -219,7 +219,8 @@ class SoundRecorder {
             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
             const audioUrl = URL.createObjectURL(audioBlob);
 
-            if (this.recordingSlot) {
+            const slotLetter = this.mediaRecorder._recordingSlot;
+            if (slotLetter) {
                 // Save the audio for this slot
                 if (!this.tangible.sessionSoundSet) {
                     this.tangible.sessionSoundSet = {};
@@ -256,6 +257,8 @@ class SoundRecorder {
     // Stop the current recording
     stopRecording() {
         console.log("Stopping recording...");
+        const currentSlot = this.recordingSlot;
+
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
             this.mediaRecorder.stop();
             console.log("MediaRecorder stopped");
