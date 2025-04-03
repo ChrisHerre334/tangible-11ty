@@ -91,12 +91,17 @@ class SoundRecorder {
                 this.handleRecordButtonClick(letter, e.currentTarget);
             });
         });
+
+        // Discard buttons
+        const discardButtons = document.querySelectorAll('.discard-button');
+        console.log(`Found ${discardButtons.length} discard buttons`);
         
         discardButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
                 this.discardRecording(letter);
             });
+            button.disabled = true;
         });
 
         // Submit button
@@ -220,6 +225,12 @@ class SoundRecorder {
                     this.tangible.sessionSoundSet = {};
                 }
 
+                // Enable the discard button for this slot
+                const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
+                if (discardButton) {
+                    discardButton.disabled = false;
+                }
+
                 // Convert blob to data URL for storage
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -284,6 +295,12 @@ class SoundRecorder {
             const progressBar = document.querySelector(`.progress-bar[data-letter="${letter}"]`);
             if (progressBar) {
                 progressBar.style.width = '0%';
+            }
+
+            // Disable the discard button for this slot
+            const discardButton = document.querySelector(`.discard-button[data-letter="${letter}"]`);
+            if (discardButton) {
+                discardButton.disabled = true;
             }
         }
     }
