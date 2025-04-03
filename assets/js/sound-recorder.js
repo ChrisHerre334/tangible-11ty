@@ -193,6 +193,8 @@ class SoundRecorder {
         // If already recording this slot, stop
         if (this.recordingSlot === letter) {
             this.stopRecording();
+            const discardButton = document.querySelector(`.discard-button[data-letter="${this.recordingSlot}"]`);
+            discardButton.disabled = false;
             return;
         }
 
