@@ -339,7 +339,7 @@ class SoundRecorder {
 
         const soundsArray = Object.values(this.tangible.sessionSoundSet);
         const setName = "Custom_" + new Date().getTime();
-        console.log("Saving sounds:", soundsArray);
+        console.log("Saving custom sound set:", setName, "with sounds:", soundsArray);
         
         // Make sure the correct format is used for tangible sound sets
         // The format must match what tangible.js expects
