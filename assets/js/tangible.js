@@ -86,12 +86,18 @@ export default class Tangible {
 		var soundsTemp = {};
 
         if (soundSet.startsWith("Custom_")) {
-            // For custom sets, use dataUrls directly
-            this.soundSets[soundSet][0].forEach((sound) => {
-                const audio = new Audio();
-                audio.src = sound.dataUrl;
-                soundsTemp[sound.letter] = audio;
-            });
+            // For custom sets, handle the letters from the array
+            const letters = this.soundSets[soundSet][0];
+
+            if (this .sessionSoundSet) {
+                letters.forEach((letter) => {
+                    if (this.sessionSoundSet[letter]) {
+                        const audio = new Audio();
+                        audio.src = this.sessionSoundSet[letter].dataUrl;
+                        soundsTemp[letter] = audio;
+                    }
+                });
+            }
         } else {
             // For built-in sets, use original approach
             this.soundSets[soundSet][0].forEach(function(element) {
