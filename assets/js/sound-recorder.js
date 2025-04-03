@@ -17,91 +17,6 @@ class SoundRecorder {
 
         console.log("SoundRecorder constructor called");
         this.initEventListeners();
-        
-        // Create permission banner with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-            this.createPermissionBanner();
-        }, 500);
-    }
-
-    // Create a banner to request microphone permission with user interaction
-    createPermissionBanner() {
-        console.log("Creating permission banner");
-        
-        // Create banner element
-        const banner = document.createElement('div');
-        banner.id = 'mic-permission-banner';
-        banner.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            text-align: center;
-            z-index: 9999;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
-
-        // Create message and button
-        const message = document.createElement('div');
-        message.textContent = 'Microphone access is required to record sounds. Please allow access.';
-        
-        const button = document.createElement('button');
-        button.textContent = 'Grant Access';
-        button.style.cssText = `
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-        `;
-        
-        const dismissButton = document.createElement('button');
-        dismissButton.textContent = '×';
-        dismissButton.style.cssText = `
-            background: none;
-            border: none;
-            color: #721c24;
-            font-size: 20px;
-            cursor: pointer;
-            margin-left: 10px;
-        `;
-
-        // Add event listeners
-        button.addEventListener('click', () => {
-            console.log("Grant access button clicked");
-            this.requestMicrophoneAccess((granted) => {
-                if (granted) {
-                    banner.style.backgroundColor = '#d4edda';
-                    banner.style.color = '#155724';
-                    message.textContent = 'Microphone access granted. You can now record sounds.';
-                    button.style.display = 'none';
-                    
-                    // Remove banner after 3 seconds
-                    setTimeout(() => {
-                        banner.remove();
-                    }, 3000);
-                }
-            });
-        });
-        
-        dismissButton.addEventListener('click', () => {
-            banner.remove();
-        });
-
-        // Add elements to banner
-        banner.appendChild(message);
-        banner.appendChild(button);
-        banner.appendChild(dismissButton);
-
-        // Add banner to document
-        document.body.appendChild(banner);
-        console.log("Permission banner added to document");
     }
 
     // Ask for microphone access and do a callback if allowed
@@ -116,11 +31,7 @@ class SoundRecorder {
                 console.log("Microphone access granted!");
                 this.stream = stream;
                 
-                // Remove banner if it exists
-                const banner = document.getElementById('mic-permission-banner');
-                if (banner) {
-                    banner.remove();
-                }
+                this.showPermissionFeedback(true);
                 
                 if (callback && typeof callback === 'function') {
                     callback(true);
@@ -129,21 +40,41 @@ class SoundRecorder {
             .catch(error => {
                 console.error("Error accessing microphone:", error);
                 
-                // Update banner if it exists
-                const banner = document.getElementById('mic-permission-banner');
-                if (banner) {
-                    banner.style.backgroundColor = '#f8d7da';
-                    banner.style.color = '#721c24';
-                    const message = banner.querySelector('div');
-                    if (message) {
-                        message.textContent = 'Microphone access denied. Recording will not work.';
-                    }
-                }
+                this.showPermissionFeedback(false);
                 
                 if (callback && typeof callback === 'function') {
                     callback(false);
                 }
             });
+    }
+
+    // Show visual feedback for microphone permission
+    showPermissionFeedback(granted) {
+        const feedback = document.createElement('div');
+        
+        if (granted) {
+            feedback.textContent = "✓ Microphone access granted";
+            feedback.style.backgroundColor = "#28a745";
+        } else {
+            feedback.textContent = "❌ Microphone access denied";
+            feedback.style.backgroundColor = "#dc3545";
+        }
+        
+        feedback.style.cssText += `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            z-index: 10000;
+        `;
+        document.body.appendChild(feedback);
+        
+        // Remove feedback after 3 seconds
+        setTimeout(() => {
+            feedback.remove();
+        }, 3000);
     }
 
     // Initialise event listeners for the custom sound set UI
@@ -334,7 +265,6 @@ class SoundRecorder {
         }
 
         this.resetRecordingState();
-        
     }
 
     // Reset the recording state
@@ -429,6 +359,16 @@ class SoundRecorder {
 // Create global function to force microphone permission request
 window.requestMicrophonePermission = function() {
     console.log("Global microphone permission request function called");
+    
+    // Check if there's an existing SoundRecorder instance
+    if (soundRecorderInstance) {
+        soundRecorderInstance.requestMicrophoneAccess((granted) => {
+            console.log("Microphone permission request handled by SoundRecorder instance:", granted);
+        });
+        return;
+    }
+
+    // Fallback if SoundRecorder instance is not available
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             console.log("Microphone permission granted via global function!");
