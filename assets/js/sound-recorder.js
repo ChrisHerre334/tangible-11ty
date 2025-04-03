@@ -17,31 +17,61 @@ class SoundRecorder {
 
         console.log("SoundRecorder constructor called");
         this.initEventListeners();
+
+        // Add CSS for recording feedback
+        this.addStyles();
+    }
+
+    // Add CSS styles for visual feedback
+    addStyles() {
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .recording-confirmed {
+                animation: pulse 0.8s 1;
+                box-shadow: 0 0 0 rgba(204,169,44, 0.4);
+            }
+            
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(44, 204, 44, 0.7);
+                    background-color: rgba(44, 204, 44, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 10px rgba(44, 204, 44, 0);
+                    background-color: rgba(44, 204, 44, 0.5);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(44, 204, 44, 0);
+                    background-color: rgba(44, 204, 44, 0);
+                }
+            }
+        `;
+        document.head.appendChild(styleElement);
     }
 
     // Ask for microphone access and do a callback if allowed
     requestMicrophoneAccess(callback) {
         console.log("Requesting microphone access...");
-        
+
         // Set flag to prevent multiple requests
         this.hasRequestedPermission = true;
-        
+
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 console.log("Microphone access granted!");
                 this.stream = stream;
-                
+
                 this.showPermissionFeedback(true);
-                
+
                 if (callback && typeof callback === 'function') {
                     callback(true);
                 }
             })
             .catch(error => {
                 console.error("Error accessing microphone:", error);
-                
+
                 this.showPermissionFeedback(false);
-                
+
                 if (callback && typeof callback === 'function') {
                     callback(false);
                 }
@@ -51,7 +81,7 @@ class SoundRecorder {
     // Show visual feedback for microphone permission
     showPermissionFeedback(granted) {
         const feedback = document.createElement('div');
-        
+
         if (granted) {
             feedback.textContent = "✓ Microphone access granted";
             feedback.style.backgroundColor = "#28a745";
@@ -59,7 +89,7 @@ class SoundRecorder {
             feedback.textContent = "❌ Microphone access denied";
             feedback.style.backgroundColor = "#dc3545";
         }
-        
+
         feedback.style.cssText += `
             position: fixed;
             top: 10px;
@@ -70,21 +100,36 @@ class SoundRecorder {
             z-index: 10000;
         `;
         document.body.appendChild(feedback);
-        
+
         // Remove feedback after 3 seconds
         setTimeout(() => {
             feedback.remove();
         }, 3000);
     }
 
+    // Visual feedback when audio can't be played
+    showPlaybackFeedback(letter) {
+        // Find the record button for this letter
+        const recordButton = document.querySelector(`.record-button[data-letter="${letter}"]`);
+        if (!recordButton) return;
+
+        // Create a temporary visual pulse effect
+        recordButton.classList.add('recording-confirmed');
+
+        // Show feedback for 800ms then remove
+        setTimeout(() => {
+            recordButton.classList.remove('recording-confirmed');
+        }, 800);
+    }
+
     // Initialise event listeners for the custom sound set UI
     initEventListeners() {
         console.log("Initializing event listeners");
-        
+
         // Record buttons
         const recordButtons = document.querySelectorAll('.record-button');
         console.log(`Found ${recordButtons.length} record buttons`);
-        
+
         recordButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
@@ -95,7 +140,7 @@ class SoundRecorder {
         // Discard buttons
         const discardButtons = document.querySelectorAll('.discard-button');
         console.log(`Found ${discardButtons.length} discard buttons`);
-        
+
         discardButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 const letter = e.currentTarget.dataset.letter;
@@ -184,7 +229,7 @@ class SoundRecorder {
             if (progressBar) {
                 progressBar.style.width = `${progress}%`;
             }
-            
+
             // Stop recording if max time reached
             if (elapsed >= this.maxRecordingTime) {
                 this.stopRecording(letter);
@@ -217,7 +262,32 @@ class SoundRecorder {
 
     setupMediaRecorder(stream, letter) {
         console.log("Got audio stream, creating recorder");
-        this.mediaRecorder = new MediaRecorder(stream);
+
+        // Detect platform
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        // Choose appropriate MIME type with fallback options
+        let options = {};
+
+        // Try to find the best supported format
+        const mimeTypes = [
+            'audio/webm',     // Best for Chrome/Windows
+            'audio/mp4',      // Better for iOS
+            'audio/mpeg',     // Another option
+            'audio/ogg',      // Another option
+            ''                // Empty string = browser default
+        ];
+
+        // Find the first supported MIME type
+        for (const type of mimeTypes) {
+            if (!type || MediaRecorder.isTypeSupported(type)) {
+                options.mimeType = type;
+                console.log(`Using MIME type: ${type || 'browser default'}`);
+                break;
+            }
+        }
+
+        this.mediaRecorder = new MediaRecorder(stream, options);
         this.mediaRecorder._recordingSlot = letter;
 
         this.mediaRecorder.addEventListener('dataavailable', event => {
@@ -228,13 +298,15 @@ class SoundRecorder {
         this.mediaRecorder.addEventListener('stop', () => {
             const recordedLetter = this.mediaRecorder._recordingSlot;
             console.log("Recording stopped for letter:", recordedLetter, "processing audio");
-            
+
             if (!recordedLetter) {
                 console.error("No letter associated with this recording");
                 return;
             }
 
-            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+            // Use the same MIME type that was selected for recording
+            const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+            const audioBlob = new Blob(this.audioChunks, { type: mimeType });
             const audioUrl = URL.createObjectURL(audioBlob);
 
             // Save the audio for this slot
@@ -257,13 +329,30 @@ class SoundRecorder {
                 console.log("Audio converted to data URL for letter:", recordedLetter);
                 this.tangible.sessionSoundSet[recordedLetter] = {
                     letter: recordedLetter,
-                    dataUrl: reader.result
+                    dataUrl: reader.result,
+                    mimeType: mimeType
                 };
 
                 // Create an audio element to test playback
                 const audio = new Audio(audioUrl);
-                audio.play();
-                console.log(`Recorded sound for letter ${recordedLetter}`);
+
+                // Safe playback with user feedback regardless of platform
+                if (isIOS) {
+                    console.log(`Recorded sound for letter ${recordedLetter} (using visual feedback on iOS)`);
+                    this.showPlaybackFeedback(recordedLetter);
+                } else {
+                    // On other platforms, try to play
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => console.log(`Playing recorded sound for letter ${recordedLetter}`))
+                            .catch(err => {
+                                console.warn(`Cannot auto-play test audio:`, err);
+                                // Fall back to visual feedback
+                                this.showPlaybackFeedback(recordedLetter);
+                            });
+                    }
+                }
             };
             reader.readAsDataURL(audioBlob);
         });
@@ -340,7 +429,7 @@ class SoundRecorder {
         const setName = "Custom_" + new Date().getTime();
         const letterArray = Object.keys(this.tangible.sessionSoundSet);
         console.log("Saving custom sound set:", setName, "with letters:", letterArray);
-        
+
         // Make sure the correct format is used for tangible sound sets
         // The format must match what tangible.js expects
         this.tangible.soundSets[setName] = [letterArray, []];
@@ -386,9 +475,9 @@ class SoundRecorder {
 }
 
 // Create global function to force microphone permission request
-window.requestMicrophonePermission = function() {
+window.requestMicrophonePermission = function () {
     console.log("Global microphone permission request function called");
-    
+
     // Check if there's an existing SoundRecorder instance
     if (soundRecorderInstance) {
         soundRecorderInstance.requestMicrophoneAccess((granted) => {
@@ -401,10 +490,10 @@ window.requestMicrophonePermission = function() {
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             console.log("Microphone permission granted via global function!");
-            
+
             // Store on window for possible later use
             window._micStream = stream;
-            
+
             // Add visual feedback
             const feedback = document.createElement('div');
             feedback.textContent = "✓ Microphone access granted";
@@ -419,7 +508,7 @@ window.requestMicrophonePermission = function() {
                 z-index: 10000;
             `;
             document.body.appendChild(feedback);
-            
+
             // Remove feedback after 3 seconds
             setTimeout(() => {
                 feedback.remove();
@@ -427,7 +516,7 @@ window.requestMicrophonePermission = function() {
         })
         .catch(error => {
             console.error("Error accessing microphone:", error);
-            
+
             // Add visual feedback for error
             const feedback = document.createElement('div');
             feedback.textContent = "❌ Microphone access denied";
@@ -442,7 +531,7 @@ window.requestMicrophonePermission = function() {
                 z-index: 10000;
             `;
             document.body.appendChild(feedback);
-            
+
             // Remove feedback after 3 seconds
             setTimeout(() => {
                 feedback.remove();
@@ -450,10 +539,63 @@ window.requestMicrophonePermission = function() {
         });
 };
 
+// Function to initialize audio, especially for iOS
+function initializeAudio() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // Unlock audio on iOS devices
+    if (isIOS) {
+        console.log("Setting up iOS audio unlock");
+
+        const unlockAudio = () => {
+            // Create an audio context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const audioCtx = new AudioContext();
+                // Create and play a short silent sound
+                const emptyBuffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = emptyBuffer;
+                source.connect(audioCtx.destination);
+                if (source.start) {
+                    source.start(0);
+                } else {
+                    source.noteOn(0);
+                }
+                console.log("iOS audio context unlocked");
+            }
+
+            // Also try to play a silent audio element
+            const silentAudio = new Audio();
+            silentAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAABEUdFT0JqZWN0SUQAAAABAAAAMEczVEVOQwAAAAEAAAB4VElUMgAAAAEAAAB4VFNTRQAAAAEAAABNVFJLAAAAAwAAADBpVFVOAAAAAgAAADFNQ0RJAAAABQAAACAAMQ==';
+            const promise = silentAudio.play();
+            if (promise !== undefined) {
+                promise
+                    .then(() => console.log("iOS silent audio played"))
+                    .catch(e => console.log("iOS silent audio failed:", e));
+            }
+
+            // Remove the event listeners after they've served their purpose
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('touchend', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+            document.removeEventListener('mouseup', unlockAudio);
+            document.removeEventListener('click', unlockAudio);
+        };
+
+        // Add event listeners for user interactions
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('touchend', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
+        document.addEventListener('mouseup', unlockAudio);
+        document.addEventListener('click', unlockAudio);
+    }
+}
+
 // Add a mic request button inside the sound set div
-(function() {
+(function () {
     console.log("Adding mic permission button to sound set div");
-    
+
     function addMicButton() {
         const soundSetDiv = document.getElementById('custom-sound-set-container');
         if (!soundSetDiv) {
@@ -461,7 +603,7 @@ window.requestMicrophonePermission = function() {
             setTimeout(addMicButton, 200);
             return;
         }
-        
+
         const button = document.createElement('button');
         button.id = 'mic-permission-request-button';
         button.textContent = 'Allow Microphone';
@@ -476,11 +618,11 @@ window.requestMicrophonePermission = function() {
             border-radius: 4px;
             cursor: pointer;
         `;
-        
+
         button.addEventListener('click', () => {
             window.requestMicrophonePermission();
         });
-        
+
         // Insert at the top of the sound set div, right after the h2
         const h2 = soundSetDiv.querySelector('h2');
         if (h2 && h2.nextSibling) {
@@ -490,7 +632,7 @@ window.requestMicrophonePermission = function() {
         }
         console.log("Mic permission button added to sound set div");
     }
-    
+
     // Wait for DOM content loaded to ensure the container exists
     if (document.readyState === 'loading') {
         window.addEventListener('DOMContentLoaded', () => setTimeout(addMicButton, 200));
@@ -498,6 +640,9 @@ window.requestMicrophonePermission = function() {
         setTimeout(addMicButton, 200);
     }
 })();
+
+// Initialize audio system for better iOS compatibility
+document.addEventListener('DOMContentLoaded', initializeAudio);
 
 // Initialise the sound recorder with the tangible instance
 let soundRecorderInstance;
